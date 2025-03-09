@@ -1,19 +1,9 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
+<%- include("partials/header.ejs") %>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MTG Wishlist Organizer</title>
-  <link rel="stylesheet" type="text/css" href="styles/main.css">
-</head>
-
-<body>
   <form name="wishlistForm" method="post" action="/processWishlist">
     <label for="wishlist">Please enter your MTG Wishlist below:</label> <br/>
-    <textarea name="wishlistText" cols="50" rows="30"></textarea> <br/>
+    <textarea name="wishlistText" cols="50" rows="20"><% if (locals.wishList) { %><% console.log(wishList); %><% wishList.forEach(cardname => { %><%= cardname %>&#13;&#10;<% }) %><% } %></textarea> <br/>
     <input type="submit" value="Submit">
   </form>
-</body>
 
-</html>
+<%- include("partials/footer.ejs") %>
