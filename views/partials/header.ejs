@@ -9,6 +9,15 @@
   <link rel="stylesheet" type="text/css" href="styles/main.css">
 </head>
 
+<div class="container">
+  <header class="d-flex justify-content-center py-3">
+    <ul class="nav nav-pills">
+      <li class="nav-item"><a href="/"     class="nav-link <%if(locals.active === "home"){%>active<%}%>" <%if(locals.active === "home"){%>aria-current="page"<%}%>>Home</a></li>
+      <li class="nav-item"><a href="/sets" class="nav-link <%if(locals.active === "sets"){%>active<%}%>" <%if(locals.active === "sets"){%>aria-current="page"<%}%>>Sets</a></li>
+    </ul>
+  </header>
+</div>
+
 <main class="container">
     
 <body>
