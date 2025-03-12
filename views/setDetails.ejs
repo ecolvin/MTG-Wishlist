@@ -6,10 +6,16 @@
     <div class="container">
       <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
         
-        <% setData.cards.forEach(card => { %>
+        <% setData.forEach(card => { %>
           <div class="col">
-            <div class="card shadow-sm">
-              <img src="<%= card.image_uris.normal %>" class="img-fluid rounded" alt="<%= card.name %>"/>
+            <div class="card shadow-sm">      
+              <% if (card.image_uris) { %>
+                <img src="<%= card.image_uris.png %>" class="img-fluid" alt="<%= card.name %>"/> 
+              <% } else if (card.card_faces) { %>
+                <img src="<%= card.card_faces[0].image_uris.png %>" class="img-fluid" alt="<%= card.card_faces[0].name %>"/>
+              <% } else { %>
+                <img src="" class="img-fluid" alt="<%= card.name %>"/>      
+              <% } %>
             </div>
           </div>
         <% }) %>

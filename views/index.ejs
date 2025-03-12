@@ -3,7 +3,7 @@
   <div class="mb-3">
     <h1>MTG Wishlist:</h1>
     <form name="wishlistForm" method="post" action="/processWishlist">
-      <textarea class="form-control" name="wishlistText" cols="50" rows="20"><% if (locals.wishList) { %><% console.log(wishList); %><% wishList.forEach(cardname => { %><%= cardname %>&#13;&#10;<% }) %><% } %></textarea> <br/>
+      <textarea class="form-control" name="wishlistText" cols="50" rows="20"><% if (locals.wishList) { %><% wishList.forEach(cardname => { %><%= cardname %>&#13;&#10;<% }) %><% } %></textarea> <br/>
       <input type="submit" value="Submit">
     </form>
   </div>
