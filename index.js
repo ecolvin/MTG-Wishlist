@@ -24,6 +24,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 let wishList = new Set(); //Set with all previously provided card names
 let setData = []; //Array of MTG sets and their info
+let setArray = []; //Array of sets to be passed to ejs files as data
 let cardsByName = {}; //Map of queried cards, indexed by card name (can have multiple variants per name)
 let cardsBySet = {}; //Map of queried cards, indexed by set code
 let boosterPackDetails;
@@ -81,6 +82,145 @@ function getRarityCounts(cardList)
     return rarities;
 }
 
+function getPackDetails(setCode)
+{
+    //Get the JSON data for all the different pack types with the requested set code
+    const packs = boosterPackDetails.filter(pack => pack.set_code === setCode);
+
+    //Loop through each different pack type from this set to create a new pack object with the necessary data
+    let newPacks = [];
+    for(const pack of packs)
+    {
+        //Skip Arena Sets (This app is for paper only) Also temporarily excluding promo packs and sample packs
+        if(pack.name.includes("Arena") || 
+           pack.name.includes("Promo") || 
+           pack.name.includes("Tournament") ||
+           pack.name.includes("Topper") ||
+           pack.name.includes("Sample"))
+        {
+            continue;
+        }
+
+        //Create the array of cards with a matching set code
+        let possibleCards = [];        
+        for(const code of pack.source_set_codes)
+        {
+            possibleCards = possibleCards.concat(cardsBySet[code]);
+        }
+
+        //Create updated sheets objects that only contain the cards on the wishlist and their weights
+        let sheets = {}; 
+        let cards = new Set();
+        for(const [sheetName, sheetData] of Object.entries(pack.sheets))
+        { 
+            //New Sheet object that includes the total weight of wishlist cards as well as the full card data for each card in the sheet
+            let newSheetObject = {
+                totalWeight: sheetData.total_weight,
+                totalTargetWeight: 0,
+                cards: [],
+            };
+
+            //If sheet is fixed (always has the same cards), set totalWeight to 1
+            if("fixed"in sheetData)
+            {
+                newSheetObject.totalWeight = 1; 
+            }
+
+            //Loop through each possible card to see if it's on the sheet (check both foil and non-foil versions)
+            for(const card of possibleCards)
+            {
+                if(!card)
+                {
+                    continue;
+                }
+                //Check for the non-foil card
+                const cardCode = card.set + ":" + card.collector_number; 
+                if(cardCode in sheetData.cards)
+                {
+                    const weight = sheetData.cards[cardCode];
+                    cards.add(card);
+                    newSheetObject.cards.push({
+                        card: card,
+                        weight: weight,
+                        foil: false,
+                    });
+                    newSheetObject.totalTargetWeight += weight;
+                }
+                   
+                //Check for the foil card
+                const cardCodeFoil = cardCode + ":foil";
+                if(cardCodeFoil in sheetData.cards)
+                {
+                    const weight = sheetData.cards[cardCodeFoil];
+                    cards.add(card);
+                    newSheetObject.cards.push({
+                        card: card,
+                        weight: sheetData.cards[cardCodeFoil],
+                        foil: true,
+                    });
+                    newSheetObject.totalTargetWeight += weight;
+                }         
+                
+            }
+
+            sheets[sheetName] = newSheetObject;
+        }
+
+        //Calculate the total weight of the different booster configurations (needed for odds calculation later)
+        let totalWeight = 0;
+        pack.boosters.forEach(booster => {
+            totalWeight += booster.weight;
+        });
+
+        //Loop through each different booster configuration to calculate the odds of getting a card from 
+        //the wishlist in that specific config, as well as the total odds to get a wishlist card from this type of pack
+        let boosters = [];
+        let totalPackOdds = 0;
+        for(const booster of pack.boosters)
+        {
+            let inverseBoosterOdds = 1;
+
+            for(const [sheetName, numRolls] of Object.entries(booster.sheets))
+            {   
+                const sheet = sheets[sheetName];
+                let cumulativeInverseOdds = 0;
+
+                if(sheet.totalWeight !== 1)
+                {
+                    const sheetOdds = sheet.totalTargetWeight / sheet.totalWeight;
+                    cumulativeInverseOdds = Math.pow(1-sheetOdds, numRolls); 
+                }
+                inverseBoosterOdds *= cumulativeInverseOdds;
+            }
+
+            const odds = 1 - inverseBoosterOdds;
+            
+            totalPackOdds += odds * (booster.weight/totalWeight);
+
+            //New Booster object that includes the odds to get a wishlist card
+            boosters.push({
+                sheets: booster.sheets,
+                weight: booster.weight,
+                odds: odds,
+            });
+        }
+
+        //Add the updated pack object to the array of packs for this set
+        const packName = pack.name.replace(pack.set_name + " ", "");
+        newPacks.push({
+            name: pack.name,
+            code: pack.code,
+            setCode: pack.set_code,
+            setName: pack.set_name,
+            packName: packName,
+            boosters: boosters,
+            sheets: sheets,
+            odds: totalPackOdds,
+        });
+    }
+    return newPacks;
+}
+
 function getSetArray() 
 {
     let sets = [];
@@ -95,6 +235,7 @@ function getSetArray()
             size: getNumUniqueCardNames(setCards),
             cards: setCards,
             rarities: getRarityCounts(setCards),
+            packs: getPackDetails(setCode),
         };
         sets.push(setObject);
     }
@@ -155,6 +296,7 @@ function processCardArray(cardArray)
             cardsBySet[setCode].push(card);
         }
     }
+    setArray = getSetArray();
 }
 
 /*
@@ -194,19 +336,13 @@ app.get("/", (req, res) => {
 });
 
 app.get("/sets", (req, res) => {
-    res.render("sets.ejs", {sets: getSetArray()});
-});
-
-app.get("/packs", (req, res) => {
-    //Update to pass correct details
-    //Show different booster packs and data related to them
-    res.render("packs.ejs", {sets: getSetArray()});
+    res.render("sets.ejs", {sets: setArray});
 });
 
 app.get("/decks", (req, res) => {
     //update to pass correct details
     //Show different pre-made decks and data related to them
-    res.render("decks.ejs", {sets: getSetArray()});
+    res.render("decks.ejs", {sets: setArray});
 });
 
 app.get("/setDetails/:setCode", (req, res) => {
@@ -216,7 +352,7 @@ app.get("/setDetails/:setCode", (req, res) => {
 
 app.get("/packDetails/:setCode", (req, res) => {
     const setCode = req.params.setCode; 
-    res.render("setDetails.ejs", {setData: cardsBySet[setCode]});
+    res.render("packDetails.ejs", {setData: cardsBySet[setCode]});
 });
 
 app.get("/deckDetails/:deckCode", (req, res) => {
@@ -277,6 +413,9 @@ app.listen(port, () => {
 /*
 TO-DOs:
 -Figure out different booster types and calculate percent chance of getting a wishlist card per booster
+-Update Set page to only show sets that have booster packs
+-Check Booster data to ensure that there are no important packs with "Promo" or "Sample" in their names
+
 -Have a separate deck page for precons that contain needed cards
 -Deal with List and Secret Lair cards
 -Update the wishlist page to be more dynamic
@@ -302,4 +441,14 @@ On Pack page
 -Have H2 with different booster names
 -Show the possible sheet distributions for each booster pack
 -Show all possible cards that can be in each slot with their odds (carousel?)
+*/
+
+/*
+Test queries:
+
+Wooded Foothills
+Windswept Heath
+Polluted Delta
+Flooded Strand
+Bloodstained Mire
 */

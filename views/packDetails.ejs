@@ -1,0 +1,28 @@
+<%- include("partials/header.ejs", {active: "packDetails"}) %>
+
+<% if (locals.setData) { %>
+  <h1><%= setData.setName %></h1>
+  <div class="album py-5 bg-body-tertiary">
+    <div class="container">
+      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+        
+        <% setData.forEach(card => { %>
+          <div class="col">
+            <div class="card shadow-sm">      
+              <% if (card.image_uris) { %>
+                <img src="<%= card.image_uris.png %>" class="img-fluid" alt="<%= card.name %>"/> 
+              <% } else if (card.card_faces) { %>
+                <img src="<%= card.card_faces[0].image_uris.png %>" class="img-fluid" alt="<%= card.card_faces[0].name %>"/>
+              <% } else { %>
+                <img src="" class="img-fluid" alt="<%= card.name %>"/>      
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<%- include("partials/footer.ejs") %>

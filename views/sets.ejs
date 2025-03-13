@@ -15,16 +15,30 @@
                 <image x="12.5%" y="12.5%" width="75%" height="75%" preserveAspectRatio="xMidYMid meet" href="<%= set.icon %>"/>
               </svg>
               <div class="card-body">
-                <h5 class="card-name"> <%= set.name %> </h5>
-                <ul>
-                  <li>common:   <%= set.rarities.common %></li>
-                  <li>uncommon: <%= set.rarities.uncommon %></li>
-                  <li>rare:     <%= set.rarities.rare %></li>
-                  <li>mythic:   <%= set.rarities.mythic %></li>
-                  <li>other:    <%= set.rarities.other %></li>
-                </ul>
+                <h5 class="card-name text-center"> <%= set.name %> </h5>
                 <div class="d-flex justify-content-between align-items-center">
-                  <a href="/setDetails/<%= set.code %>"><button type="button" class="btn btn-sm btn-outline-light">View</button></a>
+                  <div>
+                    <ul>
+                      <li>common:   <%= set.rarities.common %></li>
+                      <li>uncommon: <%= set.rarities.uncommon %></li>
+                      <li>rare:     <%= set.rarities.rare %></li>
+                      <li>mythic:   <%= set.rarities.mythic %></li>
+                      <li>other:    <%= set.rarities.other %></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <ul>
+                      <% set.packs.forEach(pack => { %>
+                        <li><%= pack.packName %>: <%= (pack.odds * 100).toFixed(2) %>%</li>
+                      <% }) %>
+                    </ul>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="btn-group">
+                    <a href="/setDetails/<%= set.code %>"><button type="button" class="btn btn-sm btn-outline-light">Set</button></a>
+                    <a href="/packDetails/<%= set.code %>"><button type="button" class="btn btn-sm btn-outline-light">Packs</button></a>
+                  </div>
                   <small class="text-body-secondary"> <%= set.size %> </small>
                 </div>
               </div>
