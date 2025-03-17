@@ -19,7 +19,7 @@ const SET_JSON_NAME = "sealed_basic_data.json";
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 let wishList = new Set(); //Set with all previously provided card names
@@ -82,6 +82,28 @@ function getRarityCounts(cardList)
     return rarities;
 }
 
+function getCardOdds(cardData, boosters, totalWeight)
+{
+    if(totalWeight === 1)
+    {
+        return 100;
+    }
+    let cumulativeOdds = 0;
+    for(const booster of boosters)
+    {
+        let inverseBoosterOdds = 1;
+        for(const sheet of cardData.sheets)
+        {
+            if(sheet.sheetName in booster.sheets)
+            {
+                inverseBoosterOdds *= Math.pow(1 - (sheet.odds/100), booster.sheets[sheet.sheetName]);
+            }
+        }
+        cumulativeOdds += (1 - inverseBoosterOdds) * (booster.weight/totalWeight);
+    }
+    return cumulativeOdds * 100;
+}
+
 function getPackDetails(setCode)
 {
     //Get the JSON data for all the different pack types with the requested set code
@@ -110,7 +132,8 @@ function getPackDetails(setCode)
 
         //Create updated sheets objects that only contain the cards on the wishlist and their weights
         let sheets = {}; 
-        let cards = new Set();
+        //Create a card map indexed by a card object containing an array of objects containing the sheet name and the card's odds in that sheet
+        let cards = new Map();
         for(const [sheetName, sheetData] of Object.entries(pack.sheets))
         { 
             //New Sheet object that includes the total weight of wishlist cards as well as the full card data for each card in the sheet
@@ -134,11 +157,31 @@ function getPackDetails(setCode)
                     continue;
                 }
                 //Check for the non-foil card
-                const cardCode = card.set + ":" + card.collector_number; 
+                let cardCode = card.set + ":" + card.collector_number; 
+                if("card_faces" in card)
+                {
+                    cardCode += "a";
+                }
                 if(cardCode in sheetData.cards)
                 {
                     const weight = sheetData.cards[cardCode];
-                    cards.add(card);
+                    
+                    const cardSheetData = {
+                        sheetName: sheetName,
+                        foil: false,
+                        odds: (weight / sheetData.total_weight) * 100,
+                    };
+                    
+                    if(cards.has(card))
+                    {
+                        cards.get(card).sheets.push(cardSheetData);
+                    }
+                    else
+                    {
+                        cards.set(card, {totalOdds: 0, sheets: [cardSheetData]});
+                    }
+                    
+
                     newSheetObject.cards.push({
                         card: card,
                         weight: weight,
@@ -152,7 +195,22 @@ function getPackDetails(setCode)
                 if(cardCodeFoil in sheetData.cards)
                 {
                     const weight = sheetData.cards[cardCodeFoil];
-                    cards.add(card);
+                    
+                    const cardSheetData = {
+                        sheetName: sheetName,
+                        foil: true,
+                        odds: (weight / sheetData.total_weight) * 100,
+                    };
+                    
+                    if(cards.has(card))
+                    {
+                        cards.get(card).sheets.push(cardSheetData);
+                    }
+                    else
+                    {
+                        cards.set(card, {totalOdds: 0, sheets: [cardSheetData]});
+                    }
+
                     newSheetObject.cards.push({
                         card: card,
                         weight: sheetData.cards[cardCodeFoil],
@@ -160,7 +218,6 @@ function getPackDetails(setCode)
                     });
                     newSheetObject.totalTargetWeight += weight;
                 }         
-                
             }
 
             sheets[sheetName] = newSheetObject;
@@ -205,6 +262,15 @@ function getPackDetails(setCode)
             });
         }
 
+        for(const data of cards.values())
+        {
+            data.totalOdds = getCardOdds(data, boosters, totalWeight);
+        }
+
+        cards = new Map([...cards].sort((a, b) => {
+            return b[1].totalOdds - a[1].totalOdds;
+        }));
+
         //Add the updated pack object to the array of packs for this set
         const packName = pack.name.replace(pack.set_name + " ", "");
         newPacks.push({
@@ -216,6 +282,7 @@ function getPackDetails(setCode)
             boosters: boosters,
             sheets: sheets,
             odds: totalPackOdds,
+            cards: cards,
         });
     }
     return newPacks;
@@ -352,7 +419,8 @@ app.get("/setDetails/:setCode", (req, res) => {
 
 app.get("/packDetails/:setCode", (req, res) => {
     const setCode = req.params.setCode; 
-    res.render("packDetails.ejs", {setData: cardsBySet[setCode]});
+    const set = setArray.find(set => set.code === setCode);
+    res.render("packDetails.ejs", {setData: set});
 });
 
 app.get("/deckDetails/:deckCode", (req, res) => {
@@ -412,7 +480,6 @@ app.listen(port, () => {
 
 /*
 TO-DOs:
--Figure out different booster types and calculate percent chance of getting a wishlist card per booster
 -Update Set page to only show sets that have booster packs
 -Check Booster data to ensure that there are no important packs with "Promo" or "Sample" in their names
 
@@ -423,24 +490,6 @@ TO-DOs:
 -Show something to user when a card can't be found
 -Update to query scryfall for all cards at once and then sort them by name and by set
 -Allow wishlist to include quantities (not sure how that would factor into booster percentages though)
-*/
-
-
-/*
-Pack Display conceptualization:
-
-/packs
-Cards sorted by Set
--Display Set Icon
--Display different pack options and their percentages
--Have total Number of cards in the bottom right (don't include cards that can't be in the booster packs)
--Have details button in the bottom left
-
-/packDetails
-On Pack page
--Have H2 with different booster names
--Show the possible sheet distributions for each booster pack
--Show all possible cards that can be in each slot with their odds (carousel?)
 */
 
 /*

@@ -1,28 +1,70 @@
 <%- include("partials/header.ejs", {active: "packDetails"}) %>
 
 <% if (locals.setData) { %>
-  <h1><%= setData.setName %></h1>
-  <div class="album py-5 bg-body-tertiary">
-    <div class="container">
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
-        
-        <% setData.forEach(card => { %>
-          <div class="col">
-            <div class="card shadow-sm">      
-              <% if (card.image_uris) { %>
-                <img src="<%= card.image_uris.png %>" class="img-fluid" alt="<%= card.name %>"/> 
-              <% } else if (card.card_faces) { %>
-                <img src="<%= card.card_faces[0].image_uris.png %>" class="img-fluid" alt="<%= card.card_faces[0].name %>"/>
-              <% } else { %>
-                <img src="" class="img-fluid" alt="<%= card.name %>"/>      
-              <% } %>
+  <h1 class="text-center"><%= setData.name %></h1>
+  <div id="carouselExampleControls" class="carousel slide" data-interval="false">
+    <div class="carousel-inner">
+      <% for( let i = 0; i < setData.packs.length; i++ ) { %>      
+        <div class="carousel-item <%= i === 0 ? 'active' : '' %>">
+           
+          <div class="d-flex justify-content-center align-items-center" style="position: relative">        
+            <h2 class="text-center"><%= setData.packs[i].name %></h2>
+            <% if (setData.packs.length > 1) { %>
+              <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="prev" style="position: absolute; left: 10%; top: 50%; transform: translateY(-50%);">
+                <span class="carousel-control-prev-icon" style="filter: invert(0)" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleControls" data-bs-slide="next" style="position: absolute; right: 10%; top: 50%; transform: translateY(-50%);">
+                <span class="carousel-control-next-icon" style="filter: invert(0)" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+            <% } %>  
+          </div>
+
+          <!--Add flex box showing the different sheet distributions-->
+          
+          <div class="album py-5 bg-body-tertiary">
+            <div class="container">
+              <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+                    
+                <% setData.packs[i].cards.forEach((data, card, map) => { %>
+                  <div class="col">
+                    <div class="card shadow-sm">      
+                      <% if (card.image_uris) { %>
+                        <img src="<%= card.image_uris.png %>" class="img-fluid" alt="<%= card.name %>"/> 
+                      <% } else if (card.card_faces) { %>
+                        <img src="<%= card.card_faces[0].image_uris.png %>" class="img-fluid" alt="<%= card.card_faces[0].name %>"/>
+                      <% } else { %>
+                        <img src="" class="img-fluid" alt="<%= card.name %>"/>      
+                      <% } %>
+                    </div>
+
+                    <div class="card-body">
+                      <h4 class="card-name text-center"> <%= card.name %> - <%= card.collector_number %> </h5>
+                      <h5 class="text-center">Overall chance: <%= data.totalOdds.toFixed(2) %>%</h5>
+                      <hr />
+                      <div>
+                        Chance per sheet:
+                        <ul>
+                          <% data.sheets.forEach(sheet => { %>
+                            <li><%= sheet.sheetName %>: <%= sheet.odds.toFixed(2) %>%</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+            
+              </div>
             </div>
           </div>
-        <% }) %>
 
-      </div>
+        </div>
+      <% } %>
     </div>
+
   </div>
+  
 <% } %>
 
 <%- include("partials/footer.ejs") %>
