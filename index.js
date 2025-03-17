@@ -84,10 +84,6 @@ function getRarityCounts(cardList)
 
 function getCardOdds(cardData, boosters, totalWeight)
 {
-    if(totalWeight === 1)
-    {
-        return 100;
-    }
     let cumulativeOdds = 0;
     for(const booster of boosters)
     {
